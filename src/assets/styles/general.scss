@@ -1,0 +1,19 @@
+@use './partials/_variables.scss' as *;
+
+$fa-font-path: '../fonts/webfonts';
+@import '@fortawesome/fontawesome-free/css/fontawesome.css';
+@import '@fortawesome/fontawesome-free/css/solid.css';
+@import '@fortawesome/fontawesome-free/css/regular.css';
+@import '@fortawesome/fontawesome-free/css/brands.css';
+
+@import 'bootstrap/scss/bootstrap';
+
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');
+
+body {
+    font-family: $basefont;
+}
+
+h1 {
+    color: $color-gray-200;
+}
