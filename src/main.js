@@ -23,12 +23,8 @@ export function initScene(canvasRef) {
   // Crea un TorusKnot
   const geometry = new THREE.TorusKnotGeometry(20, 0.1, 33, 20, 18, 20);
   //   const material = new THREE.MeshBasicMaterial({ color: 0xff6347 });
-  const material = new THREE.MeshPhysicalMaterial({
-    color: 0xf4f6f9,
-    metalness: 1, // Valore da 0 a 1
-    roughness: 1, // Valore da 0 a 1
-    clearcoat: 1, // Effetto di trasparenza (0 = nessun effetto, 1 = massimo effetto)
-    clearcoatRoughness: 0.1, // Rudezza del clearcoat
+  const material = new THREE.MeshLambertMaterial({
+    color: 0xf4f6f9, // Colore del TorusKnot
   });
   const torusKnot = new THREE.Mesh(geometry, material);
   torusKnot.position.x = -5; // Sposta a sinistra (valore negativo)
