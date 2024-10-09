@@ -18,13 +18,13 @@ export function initScene(canvasRef) {
     1000
   );
 
-  const renderer = new THREE.WebGLRenderer({ canvas: canvasRef, antialias: true, alpha: true });
+  const renderer = new THREE.WebGLRenderer({ canvas: canvasRef });
   renderer.setSize(canvasRef.clientWidth, canvasRef.clientHeight);
 
   const homeContainer = document.getElementById("home");
   homeContainer.appendChild(renderer.domElement);
   const controls = new OrbitControls(camera, renderer.domElement);
-  controls.minDistance = -1; // Distanza minima dalla scena
+  controls.minDistance = 0.75; // Distanza minima dalla scena
   controls.maxDistance = 1; // Distanza massima dalla scena
   controls.minPolarAngle = 0; // Limite minimo
   controls.maxPolarAngle = Math.PI / 2; // Limite massimo
@@ -47,7 +47,7 @@ export function initScene(canvasRef) {
 
   loader.load("scene.gltf", (gltf) => {
     const model = gltf.scene;
-    model.position.set(0, 0, 0);
+    model.position.set(0.5, 0, 0);
     model.scale.set(2, 2, 2);
 
     // Cambia il colore del materiale
@@ -94,7 +94,7 @@ export function initScene(canvasRef) {
   directionalLight1.shadow.camera.far = 50;
 
   // Posiziona la camera
-  camera.position.set(0, 0.5, 1);
+  camera.position.set(0, 2, 1);
   camera.lookAt(0, 0, 0);
 
   // Gestione dello scroll
