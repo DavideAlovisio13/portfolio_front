@@ -43,18 +43,4 @@ export default {
 <style lang="scss" scoped>
 @import "../assets/styles/partials/variables";
 
-#navbar-top {
-    position: fixed;
-    z-index: 1000;
-    top: 0;
-    width: 100%;
-    .navbar {
-        background-color: transparent;
-    }
-        #links{
-        color: $color2;
-    }
-}
-
-
 </style>

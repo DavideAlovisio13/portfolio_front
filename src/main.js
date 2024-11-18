@@ -3,131 +3,114 @@ import "./assets/styles/general.scss";
 import { createApp } from "vue";
 import App from "./App.vue";
 import { router } from "./router";
-
 import * as THREE from "three";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
-export function initScene(canvasRef) {
-  // Crea la scena
-  const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(
-    75,
-    window.innerWidth / window.innerHeight,
-    0.1,
-    1000
-  );
+import getStarfield from "./getStarfield.js";
+import { getFresnelMat } from "./getFresnelMat.js";
 
-  const renderer = new THREE.WebGLRenderer({ canvas: canvasRef });
-  renderer.setSize(canvasRef.clientWidth, canvasRef.clientHeight);
+const w = window.innerWidth;
+const h = window.innerHeight;
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(75, w / h, 0.1, 1000);
+camera.position.z = 5;
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(w, h);
+document.body.appendChild(renderer.domElement);
+THREE.ColorManagement.enabled = true;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
+renderer.toneMappingExposure = 1.2; // Aumenta l'esposizione per una scena più luminosa
 
-  const homeContainer = document.getElementById("home");
-  homeContainer.appendChild(renderer.domElement);
-  const controls = new OrbitControls(camera, renderer.domElement);
-  controls.minDistance = 0.75; // Distanza minima dalla scena
-  controls.maxDistance = 1; // Distanza massima dalla scena
-  controls.minPolarAngle = 0; // Limite minimo
-  controls.maxPolarAngle = Math.PI / 2; // Limite massimo
-  controls.enableDamping = true;
-  controls.dampingFactor = 0.25; // Fattore di damping
+// Gruppo per la Terra
+const earthGroup = new THREE.Group();
+earthGroup.rotation.z = (-23.4 * Math.PI) / 180;
+scene.add(earthGroup);
 
-  // // Crea un TorusKnot
-  // const geometry = new THREE.TorusKnotGeometry(20, 0.1, 33, 20, 18, 20);
-  // //   const material = new THREE.MeshBasicMaterial({ color: 0xff6347 });
-  // const material = new THREE.MeshPhongMaterial({
-  //   color: 0xf4f6f9,
-  //   shininess: 100,
-  // });
-  // const torusKnot = new THREE.Mesh(geometry, material);
-  // torusKnot.position.x = -5; // Sposta a sinistra (valore negativo)
-  // scene.add(torusKnot);
-  let mixer;
-  let clock = new THREE.Clock(); // Usato per tenere traccia del tempo
-  const loader = new GLTFLoader().setPath("/models/nano_wiggler/");
+// Controlli orbitali
+new OrbitControls(camera, renderer.domElement);
 
-  loader.load("scene.gltf", (gltf) => {
-    const model = gltf.scene;
-    model.position.set(0.5, 0, 0);
-    model.scale.set(2, 2, 2);
+const detail = 12;
+const loader = new THREE.TextureLoader();
 
-    // Cambia il colore del materiale
-    model.traverse((child) => {
-      if (child.isMesh) {
-        // Cambia il colore del materiale
-        child.material.color.set(0x142f3d); // Rosso, ad esempio
-      }
-    });
-    scene.add(model);
-    // Inizializza l'AnimationMixer
-    mixer = new THREE.AnimationMixer(model);
+// Geometria e materiale del pianeta
+const geometry = new THREE.IcosahedronGeometry(1, detail);
+const material = new THREE.MeshPhongMaterial({
+  map: loader.load("/textures/01_earthdiff1k.jpg"),
+  specularMap: loader.load("/textures/02_earthspec1k.jpg"),
+  bumpMap: loader.load("/textures/01_earthbump1k.jpg"),
+  bumpScale: 0.1, // Maggiore rilievo
+  shininess: 15, // Lucentezza aumentata
+});
+material.map.colorSpace = THREE.SRGBColorSpace;
+const earthMesh = new THREE.Mesh(geometry, material);
+earthGroup.add(earthMesh);
 
-    // Aggiungi tutte le animazioni del modello al mixer
-    gltf.animations.forEach((clip) => {
-      mixer.clipAction(clip).play(); // Riproduci ogni animazione
-    });
-  });
+// Luci del pianeta
+const lightsMat = new THREE.MeshBasicMaterial({
+  map: loader.load("/textures/03_earthlights1k.jpg"),
+  blending: THREE.AdditiveBlending,
+});
+const lightsMesh = new THREE.Mesh(geometry, lightsMat);
+earthGroup.add(lightsMesh);
 
-  //helper
-  // const axesHelper = new THREE.AxesHelper(5);
-  // scene.add(axesHelper);
+// Luce ambientale
+const ambientLight = new THREE.AmbientLight(0x404040, 2.5); // Intensità aumentata
+scene.add(ambientLight);
 
-  // Crea una luce ambientale
-  const ambientLight = new THREE.AmbientLight(0xffffff, 1); // Colore bianco e intensità 0.5
-  scene.add(ambientLight);
+// Nuvole
+const cloudsMat = new THREE.MeshStandardMaterial({
+  map: loader.load("/textures/04_earthcloudmap.jpg"),
+  transparent: true,
+  opacity: 0.8,
+  blending: THREE.AdditiveBlending,
+  alphaMap: loader.load("/textures/05_earthcloudmaptrans.jpg"),
+  alphaTest: 0.3,
+});
+const cloudsMesh = new THREE.Mesh(geometry, cloudsMat);
+cloudsMesh.scale.setScalar(1.003);
+earthGroup.add(cloudsMesh);
 
-  // Crea una luce direzionale
-  const directionalLight1 = new THREE.DirectionalLight(0xffffff, 5); // Colore bianco e intensità 1
-  directionalLight1.position.set(1, 1, 1).normalize();
-  directionalLight1.castShadow = true; // Abilita le ombre
-  scene.add(directionalLight1);
+// Glow atmosferico
+const fresnelMat = getFresnelMat();
+const glowMesh = new THREE.Mesh(geometry, fresnelMat);
+glowMesh.scale.setScalar(1.01);
+earthGroup.add(glowMesh);
 
-  // Crea una seconda luce direzionale
-  const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0); // Intensità inferiore
-  directionalLight2.position.set(-1, -1, 1).normalize();
-  directionalLight2.castShadow = true; // Abilita le ombre
-  scene.add(directionalLight2);
+// Campo stellare
+const stars = getStarfield({ numStars: 2000 });
+scene.add(stars);
 
-  // Configura le ombre per la luce direzionale principale
-  directionalLight1.shadow.mapSize.width = 512; // Dimensione mappa ombra
-  directionalLight1.shadow.mapSize.height = 512;
-  directionalLight1.shadow.camera.near = 0.5; // Limiti della camera ombra
-  directionalLight1.shadow.camera.far = 50;
+// Luce direzionale (Sole)
+const sunLight = new THREE.DirectionalLight(0xffffff, 3); // Intensità aumentata
+sunLight.position.set(10, 1.5, 1 );
+scene.add(sunLight);
 
-  // Posiziona la camera
-  camera.position.set(0, 2, 1);
-  camera.lookAt(0, 0, 0);
+// Helper per la luce direzionale (opzionale, solo per debug)
+const lightHelper = new THREE.DirectionalLightHelper(sunLight, 2);
+scene.add(lightHelper);
 
-  // Gestione dello scroll
-  window.addEventListener("wheel", (event) => {
-    event.preventDefault(); // Previeni lo scroll della pagina
+// Animazione
+function animate() {
+  requestAnimationFrame(animate);
 
-    // Calcola quanto scorrere in base all'evento wheel
-    const delta = event.deltaY > 0 ? 0.1 : -0.1; // Puoi regolare questa sensibilità
-    const currentTime = mixer.time || 0;
-    mixer.time = Math.max(0, currentTime + delta); // Aggiorna il tempo dell'animazione
-  });
-
-  // Funzione di animazione
-  const animate = () => {
-    requestAnimationFrame(animate);
-    // torusKnot.rotation.x += 0.001;
-    // torusKnot.rotation.y += 0.001;
-    controls.update();
-    if (mixer) {
-      const delta = clock.getDelta(); // Delta di tempo dall'ultimo frame
-      mixer.update(delta); // Aggiorna l'animazione
-    }
-    renderer.render(scene, camera);
-  };
-
-  animate();
-
-  // Gestione del resize
-  window.addEventListener("resize", () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-  });
+  earthMesh.rotation.y += 0.002;
+  lightsMesh.rotation.y += 0.002;
+  cloudsMesh.rotation.y += 0.0023;
+  glowMesh.rotation.y += 0.002;
+  stars.rotation.y -= 0.0002;
+  renderer.render(scene, camera);
 }
 
+animate();
+
+// Gestione del resize della finestra
+function handleWindowResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+window.addEventListener("resize", handleWindowResize, false);
+
+// Monta l'app Vue
 createApp(App).use(router).mount("#app");
